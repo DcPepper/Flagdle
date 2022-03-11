@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from PIL import Image
 from parsePays import getCodeISO
-from tkinter import Tk, Button, LEFT, RIGHT, Frame, Label, PhotoImage, BOTTOM
+from tkinter import DISABLED, Tk, Button, LEFT, RIGHT, Frame, Label, PhotoImage, BOTTOM
+from choixCouleurs import choixCouleurs
 
 # Step 1: Count how many (different) colors a flag has
 
@@ -60,9 +61,9 @@ def getColors(country):
             color = rgb.getpixel((i, j))
 
             if color not in trueColor:
-                rgb.putpixel((i, j), (0, 0, 0))
+                rgb.putpixel((i, j), (1, 1, 1))
             else:
-                rgb.putpixel((i, j), (255, 255, 255))
+                rgb.putpixel((i, j), (200, 200, 200))
             """
             if color not in trueColor:
                 rgb.putpixel((i, j), (0, 0, 0))
@@ -73,14 +74,14 @@ def getColors(country):
             pass
     # print(trueColor)
     print(nbr)
-    rgb.show()
+    # rgb.show()
 
     rgb.save("flag_uncolored.png")
 
     return nbr, trueColor
 
 
-problemenbr, problemeColor = getColors("pg")
+problemenbr, problemeColor = getColors("pt")
 print(problemeColor)
 usedColor = problemeColor[:]
 colore = problemeColor
@@ -159,7 +160,7 @@ def spectre(trueColor):
     return spectreCouleur
 
 
-spectrecouleur = spectre(usedColor)
+spectrecouleur = choixCouleurs(usedColor)
 
 
 def _from_rgb(rgb):
@@ -216,22 +217,182 @@ def click(i):
             # textFrame.grid()
 
 
-def passer():
+def changeCouleur(step):
+    global rgb2, problemeColor, GOOD, frame, spectrecouleur, im, framePicture, gui, x, y, a, etape, btns, label, chosenOne, chosenColors
+    etape = step
+    name = a.winfo_name()
+    text = a["text"]
+
+    print(text)
+    print(name)
+
+    if name == "img":
+        text = btns[0]["text"]
+        if "." in text:
+            print("Couleur placée")
+            for btn in btns:
+                btn["text"] = btn["text"][:-1]
+
+            col = chosenOne[1:]
+            r = int(col[:2], 16)
+            g = int(col[2:4], 16)
+            b = int(col[4:], 16)
+            rep = (r, g, b)
+            im = Image.open("flag.png")
+            rgb = im.convert("RGB")
+            width, height = im.size
+            colHere = rgb.getpixel((x, y))
+            chosenColors[colHere] = rep
+            for i in range(width):
+                for j in range(height):
+                    if rgb.getpixel((i, j)) == colHere:
+                        rgb2.putpixel((i, j), rep)
+            rgb2.save("flag_uncolored.png")
+            img = PhotoImage(file="flag_uncolored.png")
+            label = framePicture.winfo_children()[0]
+            label.configure(image=img)
+            label.image = img
+        else:
+            print("Choisir une couleur d'abord")
+
+    else:
+        chosenOne = a["bg"]
+        print("Couleur choisie:" + chosenOne)
+        for btn in btns:
+            btn["text"] = btn["text"] + "."
     pass
+
+
+def valide():
+    print("Validating")
+    global chosenColors, usedColor, rgb2, btns, btns_valide, wrong_colors
+    im = Image.open("flag.png")
+    rgb = im.convert("RGB")
+    width, height = im.size
+    wrong_colors = []
+    close_colors = []
+    good_colors = []
+    for col in chosenColors.keys():
+        tryColor = chosenColors[col]
+        if tryColor != col:
+            if tryColor not in usedColor:
+                if tryColor not in wrong_colors:
+                    wrong_colors.append(tryColor)
+                for i in range(width):
+                    for j in range(height):
+                        if rgb2.getpixel((i, j)) == tryColor:
+                            rgb2.putpixel((i, j), (200, 200, 200))
+            else:
+                if tryColor not in close_colors:
+                    close_colors.append(tryColor)
+                for i in range(width):
+                    for j in range(height):
+                        if (
+                            rgb2.getpixel((i, j)) == tryColor
+                            and rgb.getpixel((i, j)) != tryColor
+                        ):
+                            rgb2.putpixel((i, j), (200, 200, 200))
+        else:
+            if tryColor not in good_colors:
+                good_colors.append(tryColor)
+            pass
+    for col in wrong_colors:
+        colHex = "#"
+        for bit in col:
+            bit = hex(bit)[2:]
+            if len(bit) == 1:
+                bit = "0" + bit
+            colHex += bit
+        for but in btns:
+            if but["bg"] == colHex:
+                break
+        btns_valide[btns.index(but)]["bg"] = "#000000"
+    for col in close_colors:
+        colHex = "#"
+        for bit in col:
+            bit = hex(bit)[2:]
+            if len(bit) == 1:
+                bit = "0" + bit
+            colHex += bit
+        for but in btns:
+            if but["bg"] == colHex:
+                break
+        btns_valide[btns.index(but)]["bg"] = "#f6e072"
+
+    for col in good_colors:
+        colHex = "#"
+        for bit in col:
+            bit = hex(bit)[2:]
+            if len(bit) == 1:
+                bit = "0" + bit
+            colHex += bit
+        for but in btns:
+            if but["bg"] == colHex:
+                break
+        btns_valide[btns.index(but)]["bg"] = "#68f31f"
+
+    close_colors = []
+    rgb2.save("flag_uncolored.png")
+    img = PhotoImage(file="flag_uncolored.png")
+    label = framePicture.winfo_children()[0]
+    label.configure(image=img)
+    label.image = img
 
 
 gui = Tk()
 frame = Frame(gui)
 framePicture = Frame(gui)
+
 GOOD = 0
+etape = 1
+btns = []
+btns_valide = []
+chosenColors = {}
 for i, col in enumerate(spectrecouleur):
+    btn_valide = Button(frame, name=str(i), width=5, state=DISABLED)
     btn = Button(
-        frame, bg=_from_rgb(col), width=5, height=5, command=lambda i=i: click(i)
+        frame,
+        text=str(i),
+        fg=_from_rgb(col),
+        bg=_from_rgb(col),
+        width=5,
+        height=5,
+        command=lambda etape=etape: changeCouleur(etape),
     )
+    btns_valide.append(btn_valide)
+    btns.append(btn)
+    btn_valide.grid(row=1, column=i)
     btn.grid(row=0, column=i)
 img = PhotoImage(file="flag_uncolored.png")
-label = Label(framePicture, image=img).pack()
+label = Button(
+    framePicture,
+    image=img,
+    name="img",
+    command=lambda etape=etape: changeCouleur(etape),
+)
+print(label)
+label.pack()
+
+print(label)
 frame.pack()
 framePicture.pack()
+
+
+valider = Button(framePicture, text="Valider", command=valide)
+valider.pack()
+print(label.winfo_rootx())
+
+
+def getorigin(eventorigin):
+    global x, y, label, a, btns
+    a = eventorigin.widget
+    x = eventorigin.x
+    y = eventorigin.y
+    X = label.winfo_rootx()
+    Y = label.winfo_rooty()
+    print(x, y, X, Y, eventorigin, a.winfo_name())
+
+
+gui.bind("<Button 1>", getorigin)
 
 gui.mainloop()
