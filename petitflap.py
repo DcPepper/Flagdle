@@ -3,22 +3,37 @@ Like wordle but guess the flag by adding colors.
 By DcPepper
 """
 import colorsys
+from faulthandler import disable
 from turtle import color
 from requests import get
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from PIL import Image
+
 from parsePays import getCodeISO
-from tkinter import DISABLED, Tk, Button, LEFT, RIGHT, Frame, Label, PhotoImage, BOTTOM
+from tkinter import *
+from PIL import Image
 from choixCouleurs import choixCouleurs
+import random
 
 # Step 1: Count how many (different) colors a flag has
 
 # get All the colors
 
-pays = getCodeISO()
-
-
+paysetISO = getCodeISO()
+pays = [e[1].lower() for e in paysetISO]
+paysNames = [e[0] for e in paysetISO]
+paysNamesdict = {}
+for p in paysetISO:
+    paysNamesdict[p[0]] = p[1].lower()
+chosenPay = pays[random.randint(0, len(pays) - 1)]
+PAYS = ""
+for p in paysetISO:
+    p = [e.lower() for e in p]
+    if chosenPay in p:
+        PAYS = p[0]
+        break
+PAYS = PAYS[0].upper() + PAYS[1:]
+print(chosenPay)
 # Download the image
 def getFlag(country):
     image = get("https://flagcdn.com/w640/" + country + ".png")
@@ -47,21 +62,28 @@ def getColors(country):
             else:
                 colors[pixelColor] += 1
 
+    rankedcolors = {k: v for k, v in sorted(colors.items(), key=lambda item: item[1])}
+    print(rankedcolors)
     nbr = 0
 
     trueColor = []
+    almostColor = []
     for n in colors:
         if colors[n] >= 2500:
             nbr += 1
             trueColor.append(n)
+        elif colors[n] >= 2500:
+            almostColor.append(n)
 
     nbrColor = 0
     for i in range(width):
         for j in range(height):
             color = rgb.getpixel((i, j))
 
-            if color not in trueColor:
+            if color not in trueColor and color not in almostColor:
                 rgb.putpixel((i, j), (1, 1, 1))
+            elif color in almostColor:
+                pass
             else:
                 rgb.putpixel((i, j), (200, 200, 200))
             """
@@ -81,7 +103,7 @@ def getColors(country):
     return nbr, trueColor
 
 
-problemenbr, problemeColor = getColors("pt")
+problemenbr, problemeColor = getColors(chosenPay)
 print(problemeColor)
 usedColor = problemeColor[:]
 colore = problemeColor
@@ -218,17 +240,15 @@ def click(i):
 
 
 def changeCouleur(step):
-    global rgb2, problemeColor, GOOD, frame, spectrecouleur, im, framePicture, gui, x, y, a, etape, btns, label, chosenOne, chosenColors
+    global rgb2, problemeColor, GOOD, frame, spectrecouleur, im, framePicture, gui, x, y, a, etape, btns, label, chosenOne, chosenColors, btncouleur
     etape = step
     name = a.winfo_name()
     text = a["text"]
 
-    print(text)
-    print(name)
-
     if name == "img":
         text = btns[0]["text"]
         if "." in text:
+            btncouleur["bg"] = "#c8c8c8"
             print("Couleur placée")
             for btn in btns:
                 btn["text"] = btn["text"][:-1]
@@ -256,6 +276,7 @@ def changeCouleur(step):
             print("Choisir une couleur d'abord")
 
     else:
+        btncouleur["bg"] = a["bg"]
         chosenOne = a["bg"]
         print("Couleur choisie:" + chosenOne)
         for btn in btns:
@@ -263,15 +284,61 @@ def changeCouleur(step):
     pass
 
 
+def validerPays():
+    global my_entry, consignes
+    answer = my_entry.get()
+    if paysNamesdict[answer] == chosenPay:
+        consignes["text"] = "Bravo ! Tu as même réussi à trouver le pays !"
+        print("Win")
+    else:
+        consignes["text"] = f"Dommage ! Le pays était: {PAYS}"
+        print("Lose")
+
+
+def update(elt):
+    global my_list
+    my_list.delete(0, END)
+    for country in elt:
+        my_list.insert(END, country)
+
+
+def fillout(e):
+    my_entry.delete(0, END)
+    my_entry.insert(END, my_list.get(ANCHOR))
+
+
+def check(e):
+    typed = my_entry.get()
+    if typed == "":
+        data = paysNames
+    else:
+        data = []
+        for country in paysNames:
+
+            if typed.lower() in country.lower():
+                data.append(country)
+
+    update(data)
+
+
 def valide():
-    print("Validating")
-    global chosenColors, usedColor, rgb2, btns, btns_valide, wrong_colors
+    global chosenColors, consignes, usedColor, rgb2, btns, btns_valide, wrong_colors, GOOD, TRY, valider, carresgris, my_entry, my_list
+    TRY += 1
     im = Image.open("flag.png")
     rgb = im.convert("RGB")
     width, height = im.size
     wrong_colors = []
     close_colors = []
     good_colors = []
+    if TRY < 6:
+        changecarregris = framePicture.winfo_children()[TRY]
+
+        w, h = rgb2.size
+        imtemp = rgb2.resize((w // 5, h // 5))
+        imtemp.save("imtemp" + str(TRY) + ".png")
+        imgcarre = PhotoImage(file="imtemp" + str(TRY) + ".png")
+        changecarregris.configure(image=imgcarre)
+        changecarregris.image = imgcarre
     for col in chosenColors.keys():
         tryColor = chosenColors[col]
         if tryColor != col:
@@ -331,31 +398,58 @@ def valide():
                 break
         btns_valide[btns.index(but)]["bg"] = "#68f31f"
 
-    close_colors = []
-    rgb2.save("flag_uncolored.png")
-    img = PhotoImage(file="flag_uncolored.png")
-    label = framePicture.winfo_children()[0]
-    label.configure(image=img)
-    label.image = img
+    GOOD = len(good_colors)
+
+    if GOOD == len(usedColor):
+        valider.pack_forget()
+        consignes["text"] = "VICTOIRE ! Saurais-tu trouver le pays de ce drapeau?"
+        img = PhotoImage(file="flag.png")
+        label = framePicture.winfo_children()[0]
+        label.configure(image=img)
+        label.image = img
+
+        my_entry.pack(side=LEFT)
+        my_list.pack(side=LEFT)
+        my_button.pack(side=RIGHT)
+
+    elif TRY == 6:
+        valider.pack_forget()
+        consignes["text"] = f"Dommage... Le drapeau était: {PAYS}"
+        img = PhotoImage(file="flag.png")
+        label = framePicture.winfo_children()[0]
+        label.configure(image=img)
+        label.image = img
+
+    else:
+        rgb2.save("flag_uncolored.png")
+        close_colors = []
+
+        img = PhotoImage(file="flag_uncolored.png")
+        label = framePicture.winfo_children()[0]
+        label.configure(image=img)
+        label.image = img
 
 
 gui = Tk()
 frame = Frame(gui)
+frameText = Frame(gui)
 framePicture = Frame(gui)
+frameButton = Frame(gui)
 
+TRY = 0
 GOOD = 0
 etape = 1
 btns = []
 btns_valide = []
 chosenColors = {}
 for i, col in enumerate(spectrecouleur):
-    btn_valide = Button(frame, name=str(i), width=5, state=DISABLED)
+    btn_valide = Button(frame, name=str(i), width=4, state=DISABLED)
     btn = Button(
         frame,
         text=str(i),
         fg=_from_rgb(col),
         bg=_from_rgb(col),
-        width=5,
+        width=4,
         height=5,
         command=lambda etape=etape: changeCouleur(etape),
     )
@@ -363,6 +457,12 @@ for i, col in enumerate(spectrecouleur):
     btns.append(btn)
     btn_valide.grid(row=1, column=i)
     btn.grid(row=0, column=i)
+btncouleurframe = Frame(
+    frame, width=4, height=5, highlightbackground="black", highlightthickness=2
+)
+btncouleur = Button(btncouleurframe, width=4, height=5, state=DISABLED)
+btncouleur.pack()
+btncouleurframe.grid(row=0, column=i + 1)
 img = PhotoImage(file="flag_uncolored.png")
 label = Button(
     framePicture,
@@ -370,17 +470,44 @@ label = Button(
     name="img",
     command=lambda etape=etape: changeCouleur(etape),
 )
-print(label)
-label.pack()
 
-print(label)
+label.pack(side=LEFT)
+
+
+message = f"Nombre de couleur à trouver: {len(usedColor)}"
+consignes = Label(frameText, state=DISABLED, height=1, text=message)
+print(message)
+consignes.pack()
+print(consignes)
+
 frame.pack()
+frameText.pack()
 framePicture.pack()
 
+carresgris = []
+imsize = Image.open("flag.png")
+w, h = imsize.size
+for i in range(5):
+    carregris = PhotoImage(file="greyblock.png", name=str(i))
+    labelgris = Button(
+        framePicture,
+        name=str(i),
+        image=carregris,
+        state=DISABLED,
+        height=h // 5 - 1,
+        width=w // 5,
+    )
+    carresgris.append(carregris)
+    labelgris.pack()
 
-valider = Button(framePicture, text="Valider", command=valide)
+valider = Button(frameButton, text="Valider", command=valide)
 valider.pack()
-print(label.winfo_rootx())
+
+
+quit = Button(frameButton, text="Quitter", command=gui.destroy)
+quit.pack()
+
+frameButton.pack()
 
 
 def getorigin(eventorigin):
@@ -390,8 +517,19 @@ def getorigin(eventorigin):
     y = eventorigin.y
     X = label.winfo_rootx()
     Y = label.winfo_rooty()
-    print(x, y, X, Y, eventorigin, a.winfo_name())
+    # print(x, y, X, Y, eventorigin, a.winfo_name())
 
+
+my_entry = Entry(frameButton)
+
+
+my_list = Listbox(frameButton)
+
+my_button = Button(frameButton, text="VALIDER", command=validerPays)
+my_list.bind("<<ListboxSelect>>", fillout)
+my_entry.bind("<KeyRelease>", check)
+
+update(paysNames)
 
 gui.bind("<Button 1>", getorigin)
 

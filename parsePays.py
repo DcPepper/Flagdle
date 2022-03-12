@@ -1,7 +1,6 @@
 def getCodeISO():
-    with open("listePays.txt") as file:
+    with open("listePays.txt", encoding="utf-8") as file:
         lignes = file.read()
-        pays = lignes.split("\t")
-        codes = [(e.split("\n")[0]).lower() for e in pays]
-        codes.remove("afghanistan ")
+        pays = lignes.split("\n")
+        codes = [e.split(" \t") for e in pays]
         return codes

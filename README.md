@@ -38,4 +38,9 @@ Trop de couleurs sur le code RGB
 réduire le nombre de couleurs à 27 (0,127,255)
 
 Pas assez de différenciation entre les couleurs: SRI LANKA [(255, 190, 41), (0, 83, 78), (235, 116, 0), (141, 21, 58)]
-Couleur 1 et 3 se réduisent en la même couleur
+Couleur 1 et 3 se réduisent en la même coul
+
+Prochaine étape:
+- Montrer quelle couleur on utilise. DONE
+- Indiquer combien de couleur doivent être trouvées?
+- Deviner le drapeau une fois trouvé.
